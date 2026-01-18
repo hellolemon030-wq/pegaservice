@@ -1,0 +1,15 @@
+{
+    "name": "pegaservice/homework",
+    "description": "home work test;",
+    "autoload": {
+        "psr-4": {
+            "Pegaservice\\Homework\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "lemon"
+        }
+    ],
+    "require": {}
+}

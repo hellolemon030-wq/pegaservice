@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Track 查询</title>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+<style>
+table { border-collapse: collapse; width: 50%; margin-top: 10px; }
+td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }
+</style>
+</head>
+<body>
+
+<h2>查询用户状态</h2>
+
+状态: <select id="status">
+  <option value="A">A</option>
+  <option value="B">B</option>
+  <option value="C">C</option>
+  <option value="D">D</option>
+</select>
+开始日期: <input type="text" id="dateStart" value="2025/09/01">
+结束日期: <input type="text" id="dateEnd" value="2025/09/02">
+<button id="queryBtn">查询</button>
+
+<table id="resultTable">
+  <thead>
+    <tr><th>ID</th><th>用户名</th><th>状态</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<script>
+$(function() {
+    // 初始化日期选择器
+    $("#dateStart, #dateEnd").datepicker({ dateFormat: 'yy/mm/dd' });
+
+    $("#queryBtn").click(function() {
+        const status = $("#status").val();
+        const dateStart = $("#dateStart").val();
+        const dateEnd = $("#dateEnd").val();
+
+        $.get('demo.php', {
+            action: 'queryUserByDateLimit',
+            status: status,
+            dateStart: dateStart,
+            dateEnd: dateEnd
+        }, function(data) {
+            const tbody = $("#resultTable tbody");
+            tbody.empty();
+            if (Array.isArray(data)) {
+                data.forEach(row => {
+                    tbody.append(`<tr>
+                        <td>${row.id}</td>
+                        <td>${row.user_name}</td>
+                        <td>${row.status}</td>
+                    </tr>`);
+                });
+            } else if (data.error) {
+                tbody.append(`<tr><td colspan="3">${data.error}</td></tr>`);
+            }
+        }, 'json');
+    });
+});
+</script>
+
+</body>
+</html>
