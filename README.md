@@ -184,7 +184,23 @@ http://127.0.0.1:8000/demo/index.html
 - 针对当前唯一的疑点，status_track表，具体内容的生成，分布式场景/单点写入可能遇到的问题，事务的应用等，后续可能会做一些具体的文字内容分析；
 - 关于数据规模增长后等的一些简单优化手段的文字说明；
 
-### 工程集成方向
-- 作为独立模块对接至实际项目中
+### 工程集成方向[已实现line信息交互]
+- 以独立模块的形式对接至实际项目中，演示在不侵入现有业务代码的前提下，如何低成本接入不同系统；
 - 例如接入到 我的另外一个在做的作品集：简易 LINE Bot 项目里，模拟 SaaS 系统中的基础服务模块
 
+#### 集成项目说明
+
+- 项目名称：lineBotDemo
+- 项目类型：Laravel + LINE Bot 示例项目
+- 模块角色：基础服务模块（Reply Engine / 活动路由）
+- 集成方式：Git Submodule
+- 使用场景：LINE 消息交互、指令解析
+
+项目地址：
+https://github.com/hellolemon030-wq/lineBotDemo/tree/feather-pega
+
+重点目录：
+https://github.com/hellolemon030-wq/lineBotDemo/tree/feather-pega/app/Services/pegaservice
+
+在该项目中，pegaservice 作为独立模块被引入，用于模拟
+SaaS 系统中可复用的基础服务层能力。
