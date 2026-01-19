@@ -127,8 +127,9 @@ class demo{
     }
 
     public function dbInit(){
-        $db = new VDB();
-        $db->initTestData();
+        $trackService = $this->getTrackService();
+        $trackService->serviceInit(true);
+        $this->outPut("Database initialized successfully.");
     }
 }
 
