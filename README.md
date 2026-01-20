@@ -1,26 +1,23 @@
 # pegaservice
 
-## 写在前面
+※ 中国語版 README： [README.cn.md](README.cn.md)
 
-本项目以一次实际业务需求为原型，作为一个开放性课题进行实现。
+## はじめに
 
-需求背景、字段含义及业务语义均基于已有信息进行合理推断，  
-在不影响核心需求实现的前提下，部分业务设定可能与真实生产环境存在差异。
+本プロジェクトの目的は以下の通りです。
+- 要件を整理し、技術的に分解すること
+- 適切なデータモデルおよび検索設計を行うこと
+- 制約条件下における実装方針と判断理由を明示すること
 
-本项目的目标在于：
-- 清晰拆解需求
-- 设计合理的数据模型与查询方案
-- 在有限前提下给出工程层面的实现与取舍说明
+## 要件および既存リソース
 
-## 需求及现有资源
-
-### 具体需求表述内容
+### 要件内容
 
 指定した日付(status_track.status_date)の区間内で，
 状態(status_track.status)が「B」であるユーザー名(main_list.user_name)のリストを取得する
 
-表参考如下：
-### main_list表
+以下のテーブル構成を前提とします。
+### main_list テーブル
 
 | id  | user_name | status |
 |-----|-----------|--------|
@@ -32,9 +29,14 @@
 | 106 | User06    | D      |
 
 
-### status_track表
+### status_track テーブル
 
-status_track表，id字段为外键，对应main_list.id，一般用于join的时候匹配main_list.user_name（或换句话说，用户id是永恒固定的，user_name也有可能会被变更，业务用main_list.id为准）；
+status_track.id は main_list.id を参照する外部キーです。
+JOIN 時には主に main_list.user_name を取得する目的で使用します。
+
+業務的には ユーザーIDは不変であり、  
+user_name は将来的に変更される可能性がある前提としています。  
+そのため、業務上の識別子は常に id を基準とします。  
 
 | id  | track_no | status | status_date |
 |-----|----------|--------|-------------|
@@ -53,25 +55,26 @@ status_track表，id字段为外键，对应main_list.id，一般用于join的�
 | 106 | 3        | C      | 2025/09/03  |
 | 106 | 4        | D      | 2025/09/04  |
 
-> - `status_date` 在数据库中的原始格式为 `Y/n/j`（如 `2025/9/3`）
-> - 文档中为提高可读性，统一展示为 `YYYY-MM-DD`
+> - データベース上の status_date の実フォーマットは Y/n/j（例：2025/9/3）
+> - 本ドキュメントでは可読性向上のため YYYY-MM-DD 表記で記載しています
 
+## 設計方針の整理
 
-## 简单分析
+### テーブル構成の整理
 
-### 数据表基本分析
+#### main_list テーブル
 
-#### main_list表
+各ユーザーの最新状態を保持するテーブルです。
+業務上は「現在時点におけるユーザーの最終状態」を参照する目的で使用します。
 
-用户最终状态表，支撑的业务需求，大致就是，能反映当前时间节点，用户最后的状态；  
+#### status_track テーブル
 
-#### status_track表
+ユーザーの状態変更履歴を保持するテーブルです。
+本課題では、過去の状態を日付条件で検索するための主なデータソースとなります。
 
-状态变更的具体明细；
+## 要件実現について
 
-## 需求实现相关
-
-### 需求解决核心 【sql】
+### 中核となる SQL
 
 ```sql
 SELECT
@@ -86,121 +89,133 @@ WHERE
     st.status = 'B';
 ```
 
-单从需求分析，表的设计，核心索引，status_track.status_date。以及main_list.id  
-对于status_track表，假定数据量有一定量，后续需求返回数据如果需要返回status/track_no，可能会用到索引覆盖；定义主键索引(id,track_no)以及联合索引(status_date, status, id)
+要件から判断すると、検索条件の中心は以下の項目です。
+- status_track.status_date
+- status_track.status
 
-### backend具体实现-业务抽象
+status_track に一定規模のデータが存在する前提では、  
+検索効率を重視したインデックス設計が重要となります。
 
-1. **用户表 main_list**  
+本実装では以下を前提としています。
+- 主キー：(id, track_no)
+- 検索用の複合インデックス：(status_date, status, id)
+
+将来的に track_no や status を結果として返す要件が追加された場合でも、  
+インデックスカバリングを活用できる構成としています。
+
+### バックエンド実装
+
+#### ドメインモデル
+
+1. **ユーザーモデル（main_list）**  
    - **位置**：[src/model/MainListModel.php](src/model/MainListModel.php)  
-   - **描述**：存储用户基础信息（id, user_name, status）  
+   - **概要**：ユーザーの基本情報を保持（id, user_name, status）  
 
-2. **状态明细表 status_track**  
+2. **ステータス履歴モデル（status_track）**  
    - **位置**：[src/model/StatusTrackModel.php](src/model/StatusTrackModel.php)  
-   - **描述**：存储每个用户的状态变更记录（id, track_no, status, status_date）  
-
-3. **数据库抽象 BaseDb**  
-   - **位置**：[src/service/BaseDb.php](src/service/BaseDb.php)  
-   - **描述**：提供统一数据库接口，可对接不同框架或 PDO，实现解耦  
+   - **概要**：状態変更履歴を管理（id, track_no, status, status_date）
 
 ---
 
-### backend具体实现-业务代码
+#### サービス層
 
-1. **核心业务服务 TrackService**  
+1. **TrackService**  
    - **位置**：[src/service/TrackService.php](src/service/TrackService.php)  
-   - **描述**：该次业务核心，初始化/数据写入/最终需求查询接口； 
-   - **代码架构**：`setBaseDb()` 方法可注入不同数据库实现，实现不同框架/不同项目均能低成本应用项目成果；
+   - **概要**：本機能の中核を担うサービス。
+   - `setBaseDb()` を通じて、利用する DB 実装を切り替えることが可能。  
+     これにより、特定の DB 実装に依存しない **疎結合な構成** を実現している  
+     （詳細は[src/service/BaseDb.php](src/service/BaseDb.php) を参照）。
 
-2. **演示调用 demo**  
+2. **デモ実行用スクリプト**  
    - **位置**：[demo/demo.php](demo/demo.php)  
-   - **描述**：CLI / HTTP 调用入口，自动根据 `action` 调用对应方法  
+   - **概要**：CLI / HTTP 両対応の簡易実行環境 
 
 ---
 
-### 运行示例
+### 実行例
 
-**CLI 模式**：
+**CLI**：
 
 ```bash
-# 初始化测试数据
+# テスト用データの初期化
 php demo.php --action=dbInit
 
-# 查询指定时间和状态的用户
+# 指定した期間・ステータス条件に該当するユーザーを検索
 php demo.php --action=queryUserByDateLimit --status=A --dateStart=2025/09/01 --dateEnd=2025/09/02
 ```
 
-**http 模式**：
+**http**：
 ```bash
 GET /demo.php?action=queryUserByDateLimit&status=A&dateStart=2025/09/01&dateEnd=2025/09/02
 ```
 
 ---
 
-### 前端实现
+### フロントエンド
 
-页面使用 **jQuery 内嵌日期选择插件（datepicker）**，快速实现了一个简单的用户交互界面：
+jQuery UI の Datepicker を使用し、  
+簡易的な検索 UI を実装しています。
 
-- 用户可以选择 **起始日期** 和 **结束日期**
-- 用户可以选择或输入 **状态**
-- 页面提供 **多文本输入框**（textarea），可用于显示或输入查询结果或批量参数
-- 点击查询按钮即可通过 AJAX 调用 `demo.php` 获取结果并显示在页面上
+- 開始日・終了日の指定
+- 状態の選択
+- AJAX による検索結果表示
 
-#### 本地整体服务测试
+#### ローカル起動
 
-在本地启动 PHP 内置服务器即可测试：
-> 本地调试前，确认mysql连接问题；[src/service/VDB.php](src/service/VDB.php)  
+PHP の組み込みサーバーを起動することで、ローカル環境で動作確認が可能です。
+
+> ※ ローカルでの実行前に、MySQL の接続設定をご確認ください。  
+>   設定ファイル： [src/service/VDB.php](src/service/VDB.php)
 ```
-# 本地调试前，确认mysql连接问题；
+# PHP 組み込みサーバーを起動
 php -S 127.0.0.1:8000
 
-# 初始化数据库；
+# データベース初期化（テストデータ作成）
 http://127.0.0.1:8000/demo/demo.php?action=dbInit
 
-# 打开测试页面；
+# 動作確認用ページを開く
 http://127.0.0.1:8000/demo/index.html
 ```
 
 
 
-## update log
+## 更新履歴
 
 ### 1.0
-- 实现初始版本，仅聚焦本次需求的核心查询逻辑：
-  - 按指定时间区间和状态查询用户列表
-- 完成基础数据模型及 SQL 查询实现
+- 要件に必要な検索機能を中心に初期実装
+- データモデルおよび SQL 実装
 
 ### 1.1
-- 调整并整理 `TrackService` 的职责划分
-- 补充基础写入能力（`addUser` / `track` / `updateUserStatus`），用于初始化数据及模拟状态变更
-- 在不影响现有查询逻辑的前提下，为后续功能扩展预留结构
+- TrackService の責務整理
+- データ書き込み処理の追加（`addUser` / `track` / `updateUserStatus`）
+- 将来拡張を考慮した構造整理
 
 
 
-## 已知限制与后续思考
-当前实现以满足既定查询需求为目标，以下内容为实现过程中产生的延伸思考。
+## 制約事項および今後の検討
 
-### 数据模型层面
-- 针对当前唯一的疑点，status_track表，具体内容的生成，分布式场景/单点写入可能遇到的问题，事务的应用等，后续可能会做一些具体的文字内容分析；
-- 关于数据规模增长后等的一些简单优化手段的文字说明；
+### データモデル観点
+- status_track の生成ルールや順序保証については要件未確定
+- 分散環境・単一点書き込みにおけるトランザクション設計は今後の検討対象
+- データ量増加時の簡易的な最適化方針については別途整理予定
 
-### 工程集成方向[已实现line信息交互]
-- 以独立模块的形式对接至实际项目中，演示在不侵入现有业务代码的前提下，如何低成本接入不同系统；
-- 例如接入到 我的另外一个在做的作品集：简易 LINE Bot 项目里，模拟 SaaS 系统中的基础服务模块
+### 工程・統合観点（実装済）
+- 本モジュールは独立したサービスとして利用可能
+- 実際のプロジェクトへの組み込み例として、LINE Bot プロジェクトに統合
 
-#### 集成项目说明
+#### 統合プロジェクト概要
+- プロジェクト名：lineBotDemo
+- 構成：Laravel + LINE Bot
+- 統合方式：Git Submodule
+- 役割：SaaS 基盤を想定した共通サービス層
+- 使用シーン：LINE メッセージのやり取り、コマンド解析
 
-- 项目名称：lineBotDemo
-- 项目类型：Laravel + LINE Bot 示例项目
-- 模块角色：基础服务模块（Reply Engine / 活动路由）
-- 集成方式：Git Submodule
-- 使用场景：LINE 消息交互、指令解析
 
-项目地址：
+URL：
 https://github.com/hellolemon030-wq/lineBotDemo/tree/feather-pega
 
-重点目录：
+重点ディレクトリ：
 https://github.com/hellolemon030-wq/lineBotDemo/tree/feather-pega/app/Services/pegaservice
 
-在该项目中，pegaservice 作为独立模块被引入，用于模拟
-SaaS 系统中可复用的基础服务层能力。
+業務ロジックから切り離した形でサービス層を構成することで、  
+将来的な機能拡張や他プロジェクトへの横断的な利用を見据えた設計としています。

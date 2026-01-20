@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Track 查询demo</title>
+<title>ユーザー状態検索デモ</title>
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <style>
 table { border-collapse: collapse; width: 50%; margin-top: 10px; }
@@ -11,22 +11,27 @@ td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }
 </head>
 <body>
 
-<h2>查询用户状态</h2>
-<h4><a href='demo.php?action=dbInit' target="_blank">测试初始化</a></h4>
 
-状态: <select id="status">
+<h2>ユーザー状態検索</h2>
+<h4><a href="demo.php?action=dbInit" target="_blank">テストデータ初期化</a></h4>
+
+状態：<select id="status">
   <option value="A">A</option>
   <option value="B">B</option>
   <option value="C">C</option>
   <option value="D">D</option>
 </select>
-开始日期: <input type="text" id="dateStart" value="2025/09/01">
-结束日期: <input type="text" id="dateEnd" value="2025/09/02">
-<button id="queryBtn">查询</button>
+開始日：<input type="text" id="dateStart" value="2025/09/01">
+終了日：<input type="text" id="dateEnd" value="2025/09/02">
+<button id="queryBtn">検索</button>
 
 <table id="resultTable">
   <thead>
-    <tr><th>ID</th><th>用户名</th><th>状态</th></tr>
+    <tr>
+      <th>ID</th>
+      <th>ユーザー名</th>
+      <th>状態</th>
+    </tr>
   </thead>
   <tbody></tbody>
 </table>
@@ -35,7 +40,7 @@ td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 <script>
 $(function() {
-    // 初始化日期选择器
+
     $("#dateStart, #dateEnd").datepicker({ dateFormat: 'yy/mm/dd' });
 
     $("#queryBtn").click(function() {
