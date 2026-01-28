@@ -204,3 +204,37 @@ https://github.com/hellolemon030-wq/lineBotDemo/tree/feather-pega/app/Services/p
 
 在该项目中，pegaservice 作为独立模块被引入，用于模拟
 SaaS 系统中可复用的基础服务层能力。
+
+
+## 附加说明
+
+<a id="trackno-explanation"></a>
+
+### 主キーとtrack_noの説明
+
+#### track_no说明
+1. 当前需求用不上的字段，可能有2个具体作用；a，后续需求期望查询具体记录对应的track_no，如果track_no强制遵循自增1的话，当前字段实际是冗余字段，用以提高查询效率；没有该字段，也可以通过稍微复杂一点的原生sql得出结果，当然，该查询对于数据库存在一定的负载风险，增加该冗余字段将有效对该需求进行优化；
+
+```sql
+SELECT
+    st.id,
+    ml.user_name,
+    st.status,
+    (
+        SELECT COUNT(*)
+        FROM status_track st2
+        WHERE st2.id = st.id
+          AND st2.status_date <= st.status_date
+    ) AS computed_track_no
+FROM status_track st
+JOIN main_list ml ON st.id = ml.id
+WHERE st.status_date BETWEEN '2025/9/1' AND '2025/9/2'
+  AND st.status = 'B';
+```
+2. 为什么以id/track_no作为主键？核心理由：a，异步写入模型，避免重复事件的写入（*）；b，索引覆盖，联合索引(status_date, status, id)+主键索引(id, track_no)的组合，索引覆盖已覆盖该表支持后续track_no的查询需求，无需回表。
+
+#### データ量増加の対策
+
+1. 关于索引，当前的复合索引及主键索引，在不增加新字段的场合下，所有字段都已经被索引覆盖；（当然，需要空间换效率，以及增加数据的写开销）
+2. 在数据量急速增多时，当前的索引组合写开销比较大，同时，为了提高查询效率，如果能将数据控制在一定范围，是最好的。因此，可以增加定时清理数据的策略；例如，当前的查询需求，是提供一年的量的数据查询的；那么，可以写脚本每天可以将365天以前的数据迁移到其他数据库进行存储；
+3. 数据量大的表的查询，可能会带来数据库高负荷的问题，自然会影响到所在系统，为了彻底避免影响其他业务系统，可以降低查询需求的服务与其他服务的耦合，例如引入主从数据库设计，又例如该表所在数据库实例与其他数据库进行分离。

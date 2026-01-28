@@ -38,10 +38,23 @@ td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: left; }
 
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-<script>
-$(function() {
+<script>$(function() {
 
-    $("#dateStart, #dateEnd").datepicker({ dateFormat: 'yy/mm/dd' });
+    const dateFormat = 'yy/mm/dd';
+
+    $("#dateStart").datepicker({
+        dateFormat: dateFormat,
+        onSelect: function(selectedDate) {
+            $("#dateEnd").datepicker("option", "minDate", selectedDate);
+        }
+    });
+
+    $("#dateEnd").datepicker({
+        dateFormat: dateFormat,
+        onSelect: function(selectedDate) {
+            $("#dateStart").datepicker("option", "maxDate", selectedDate);
+        }
+    });
 
     $("#queryBtn").click(function() {
         const status = $("#status").val();
@@ -56,6 +69,7 @@ $(function() {
         }, function(data) {
             const tbody = $("#resultTable tbody");
             tbody.empty();
+
             if (Array.isArray(data)) {
                 data.forEach(row => {
                     tbody.append(`<tr>

@@ -149,8 +149,8 @@ class TrackService{
     public function serviceInit($reset = false){
         $db = self::getBaseDb();
         if($reset){
-            $db->execute("drop TABLE status_track");
-            $db->execute("drop TABLE main_list");
+            $db->execute("DROP TABLE IF EXISTS status_track");
+            $db->execute("drop TABLE IF EXISTS main_list");
         }
 
         // 创建表
